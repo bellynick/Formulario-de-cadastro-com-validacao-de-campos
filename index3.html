@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Formulário com Validação</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.7/dist/css/bootstrap.min.css" rel="stylesheet" />
+  <link rel="stylesheet" href="style3.css">
+  
+</head>
+<body>
+  <div class="container mt-5">
+    <h2>Formulário de Cadastro</h2>
+    <form id="formulario">
+
+      <!-- Nome -->
+      <div class="mb-3">
+        <label for="nome" class="form-label">Nome:</label>
+        <input type="text" class="form-control" id="nome" placeholder="Digite seu nome" />
+        <div class="text-danger" id="erroNome"></div>
+      </div>
+
+      <!-- Email -->
+      <div class="mb-3">
+        <label for="email" class="form-label">E-mail:</label>
+        <input type="email" class="form-control" id="email" placeholder="Digite seu e-mail" />
+        <div class="text-danger" id="erroEmail"></div>
+      </div>
+
+      <!-- Senha -->
+      <div class="mb-3">
+        <label for="senha" class="form-label">Senha:</label>
+        <input type="password" class="form-control" id="senha" placeholder="Digite uma senha" />
+        <div class="text-danger" id="erroSenha"></div>
+      </div>
+
+      <!-- Confirmar Senha -->
+      <div class="mb-3">
+        <label for="confirmarSenha" class="form-label">Confirmar senha:</label>
+        <input type="password" class="form-control" id="confirmarSenha" placeholder="Confirme a senha" />
+        <div class="text-danger" id="erroConfirmarSenha"></div>
+      </div>
+
+      <!-- Data de nascimento -->
+      <div class="mb-3">
+        <label for="aniversario" class="form-label">Data de nascimento:</label>
+        <input type="date" class="form-control" id="aniversario" />
+        <div class="text-danger" id="erroAniversario"></div>
+      </div>
+
+      <!-- Gênero -->
+      <div class="mb-3">
+        <label for="genero" class="form-label">Gênero:</label>
+        <select id="genero" class="form-select">
+          <option value="">Selecione</option>
+          <option value="masculino">Masculino</option>
+          <option value="feminino">Feminino</option>
+          <option value="outro">Outro</option>
+          <option value="nao_dizer">Prefiro não dizer</option>
+        </select>
+        <div class="text-danger" id="erroGenero"></div>
+      </div>
+
+      <!-- Estado -->
+      <div class="mb-3">
+        <label for="estado" class="form-label">Estado:</label>
+        <select id="estado" class="form-select" onchange="carregarCidades()">
+          <option value="">Carregando estados...</option>
+        </select>
+        <div class="text-danger" id="erroEstado"></div>
+      </div>
+
+      <!-- Cidade -->
+      <div class="mb-3">
+        <label for="cidade" class="form-label">Cidade:</label>
+        <select id="cidade" class="form-select" onchange="buscarCEP()">
+          <option value="">Selecione o estado primeiro</option>
+        </select>
+        <div class="text-danger" id="erroCidade"></div>
+      </div>
+
+      <!-- Rua -->
+      <div class="mb-3">
+        <label for="rua" class="form-label">Rua:</label>
+        <input type="text" class="form-control" id="rua" placeholder="Digite o nome da rua" onblur="buscarCEP()" />
+        <div class="text-danger" id="erroRua"></div>
+      </div>
+
+      <!-- CEP -->
+      <div class="mb-3">
+        <label for="cep" class="form-label">CEP:</label>
+        <input type="text" class="form-control" id="cep" readonly />
+        <div class="text-danger" id="erroCEP"></div>
+      </div>
+
+      <!-- Botão -->
+      <button type="submit" class="btn btn-primary">Enviar</button>
+    </form>
+  </div>
+
+<script>
+  let estadosCompletos = [];
+
+  // Carrega os estados
+  window.addEventListener("DOMContentLoaded", () => {
+    fetch("https://servicodados.ibge.gov.br/api/v1/localidades/estados")
+      .then(response => response.json())
+      .then(estados => {
+        estadosCompletos = [...estados]; // Clona antes de ordenar
+        const estadoSelect = document.getElementById("estado");
+        estadoSelect.innerHTML = '<option value="">Selecione um estado</option>';
+
+        estados.sort((a, b) => a.nome.localeCompare(b.nome));
+        estados.forEach(estado => {
+          const option = document.createElement("option");
+          option.value = estado.id;
+          option.textContent = estado.nome;
+          estadoSelect.appendChild(option);
+        });
+      })
+      .catch(error => {
+        console.error("Erro ao carregar estados:", error);
+        document.getElementById("estado").innerHTML = '<option value="">Erro ao carregar estados</option>';
+      });
+  });
+
+  // Carrega as cidades com base no estado
+  function carregarCidades() {
+    const estadoId = document.getElementById("estado").value;
+    const cidadeSelect = document.getElementById("cidade");
+    cidadeSelect.innerHTML = '<option value="">Carregando cidades...</option>';
+
+    if (!estadoId) {
+      cidadeSelect.innerHTML = '<option value="">Selecione o estado primeiro</option>';
+      return;
+    }
+
+    fetch(`https://servicodados.ibge.gov.br/api/v1/localidades/estados/${estadoId}/municipios`)
+      .then(response => response.json())
+      .then(cidades => {
+        cidadeSelect.innerHTML = '<option value="">Selecione uma cidade</option>';
+        cidades.forEach(cidade => {
+          const option = document.createElement("option");
+          option.value = cidade.nome;
+          option.textContent = cidade.nome;
+          cidadeSelect.appendChild(option);
+        });
+      })
+      .catch(error => {
+        console.error("Erro ao carregar cidades:", error);
+        cidadeSelect.innerHTML = '<option value="">Erro ao carregar cidades</option>';
+      });
+  }
+
+  // Busca o CEP com base na rua, cidade e estado
+  function buscarCEP() {
+    const estadoId = document.getElementById("estado").value;
+    const cidade = document.getElementById("cidade").value.trim();
+    const rua = document.getElementById("rua").value.trim();
+    const cepInput = document.getElementById("cep");
+
+    if (!estadoId || !cidade || !rua) {
+      cepInput.value = "";
+      return;
+    }
+
+    const estadoObj = estadosCompletos.find(e => e.id == estadoId);
+    if (!estadoObj) {
+      cepInput.value = "";
+      return;
+    }
+
+    const siglaEstado = estadoObj.sigla;
+    const url = `https://viacep.com.br/ws/${siglaEstado}/${encodeURIComponent(cidade)}/${encodeURIComponent(rua)}/json/`;
+
+    fetch(url)
+      .then(res => res.json())
+      .then(data => {
+        if (Array.isArray(data) && data.length > 0) {
+          cepInput.value = data[0].cep;
+        } else {
+          cepInput.value = "CEP não encontrado";
+        }
+      })
+      .catch(err => {
+        console.error("Erro ao buscar CEP:", err);
+        cepInput.value = "Erro na busca";
+      });
+  }
+
+  // Validação do formulário
+  document.getElementById('formulario').addEventListener('submit', function(event) {
+    event.preventDefault();
+    let valido = true;
+
+    const nome = document.getElementById('nome');
+    const email = document.getElementById('email');
+    const senha = document.getElementById('senha');
+    const confirmarSenha = document.getElementById('confirmarSenha');
+    const aniversario = document.getElementById('aniversario');
+    const genero = document.getElementById('genero');
+    const estado = document.getElementById('estado');
+    const cidade = document.getElementById('cidade');
+    const rua = document.getElementById('rua');
+
+    document.querySelectorAll('.text-danger').forEach(el => el.textContent = '');
+
+    if (nome.value.trim() === '') {
+      document.getElementById('erroNome').textContent = 'Por favor, preencha o nome.';
+      valido = false;
+    }
+
+    if (email.value.trim() === '') {
+      document.getElementById('erroEmail').textContent = 'Por favor, preencha o email.';
+      valido = false;
+    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.value.trim())) {
+      document.getElementById('erroEmail').textContent = 'Por favor, digite um email válido.';
+      valido = false;
+    }
+
+    if (senha.value === '') {
+      document.getElementById('erroSenha').textContent = 'Por favor, preencha a senha.';
+      valido = false;
+    } else if (senha.value.length < 6) {
+      document.getElementById('erroSenha').textContent = 'A senha deve ter no mínimo 6 caracteres.';
+      valido = false;
+    }
+
+    if (confirmarSenha.value === '') {
+      document.getElementById('erroConfirmarSenha').textContent = 'Por favor, confirme a senha.';
+      valido = false;
+    } else if (senha.value !== confirmarSenha.value) {
+      document.getElementById('erroConfirmarSenha').textContent = 'As senhas não conferem.';
+      valido = false;
+    }
+
+    if (aniversario.value === '') {
+      document.getElementById('erroAniversario').textContent = 'Por favor, selecione a data de nascimento.';
+      valido = false;
+    }
+
+    if (genero.value === '') {
+      document.getElementById('erroGenero').textContent = 'Por favor, selecione o gênero.';
+      valido = false;
+    }
+
+    if (estado.value === '') {
+      document.getElementById('erroEstado').textContent = 'Por favor, selecione o estado.';
+      valido = false;
+    }
+
+    if (cidade.value === '') {
+      document.getElementById('erroCidade').textContent = 'Por favor, selecione a cidade.';
+      valido = false;
+    }
+
+    if (rua.value.trim() === '') {
+      document.getElementById('erroRua').textContent = 'Por favor, preencha a rua.';
+      valido = false;
+    }
+
+    if (valido) {
+  alert('Formulário enviado com sucesso!');
+  window.location.href = ".//inicio.html"; 
+   }
+  });
+</script>
+
+</body>
+</html>
